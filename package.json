@@ -1,0 +1,32 @@
+{
+  "name": "@etamong-playground/audit-ts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Durable audit event contracts for TypeScript.",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./relational": {
+      "types": "./dist/relational.d.ts",
+      "import": "./dist/relational.js"
+    },
+    "./relational-schema.sql": "./relational-schema.sql"
+  },
+  "files": [
+    "dist",
+    "relational-schema.sql"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "test": "npm run build && node --test test/*.test.mjs",
+    "check:package": "npm run build && node scripts/check-package.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3",
+    "miniflare": "4.20260722.0"
+  },
+  "packageManager": "pnpm@10.33.0"
+}

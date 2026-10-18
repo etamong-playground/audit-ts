@@ -1,0 +1,68 @@
+{
+  "retention": [
+    {
+      "occurrence": "2024-02-29T12:34:56Z",
+      "expiry": "2026-02-28T12:34:56Z"
+    },
+    {
+      "occurrence": "2026-01-01T01:00:00+09:00",
+      "expiry": "2027-12-31T16:00:00Z"
+    },
+    {
+      "occurrence": "2024-02-29T12:34:56.123456789Z",
+      "expiry": "2026-02-28T12:34:56.123456789Z"
+    }
+  ],
+  "principals": [
+    {
+      "issuer": "ab",
+      "subject": "c",
+      "key_hex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "actor_id": "7d788c9ff14cffe959c2b5e23455907a1b8a10701befe2e5741360c1e2b68d04"
+    },
+    {
+      "issuer": "a",
+      "subject": "bc",
+      "key_hex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "actor_id": "8a0e521372b704d4803c61532b1d6688d80eac9c58103017d68f2c9ed14fc0ab"
+    },
+    {
+      "issuer": "issuer<&>",
+      "subject": "subject",
+      "key_hex": "0707070707070707070707070707070707070707070707070707070707070707",
+      "actor_id": "7dd1374e11df8f6cf635bafa842ba4e68e53f27c16eebd1524f6b5e6e27a3829"
+    }
+  ],
+  "sizes": [
+    {
+      "character": "<",
+      "repeat": 11000,
+      "accepted": false
+    },
+    {
+      "character": ">",
+      "repeat": 11000,
+      "accepted": false
+    },
+    {
+      "character": "&",
+      "repeat": 11000,
+      "accepted": false
+    },
+    {
+      "character": " ",
+      "repeat": 11000,
+      "accepted": false
+    },
+    {
+      "character": " ",
+      "repeat": 11000,
+      "accepted": false
+    },
+    {
+      "character": "<",
+      "repeat": 10000,
+      "accepted": true
+    }
+  ]
+}
