@@ -1,7 +1,6 @@
 {
   "name": "@etamong-playground/audit-ts",
   "version": "0.1.0",
-  "private": true,
   "type": "module",
   "description": "Durable audit event contracts for TypeScript.",
   "exports": {
@@ -28,5 +27,12 @@
     "typescript": "5.9.3",
     "miniflare": "4.20260722.0"
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@10.33.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/etamong-playground/audit-ts.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
 }

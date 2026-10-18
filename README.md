@@ -75,4 +75,15 @@ Outbox export, expiry cleanup and recovery replay are separate required integrat
 
 Run `pnpm install --frozen-lockfile`, `pnpm test` and `pnpm check:package`.
 The `test` CI job runs the real Miniflare transaction tests and imports the packed artifact from an isolated consumer directory.
-Package publication requires configuring registry access and a test-gated release workflow before removing the private-package safeguard.
+
+## Release
+
+Configure the npm Trusted Publisher for organization `etamong-playground`, repository `audit-ts`, workflow `publish.yml`, with direct publishing enabled before the first release.
+A new npm package may require account-side bootstrap before its Trusted Publisher can be configured.
+
+Merge a stable version bump, then dispatch `Publish` on `main`.
+The workflow runs tests and packed consumer checks before cutting `v<package.json version>` and publishing the same tarball to public npm and the GitHub Packages mirror.
+An existing version tag must identify the same commit; an existing registry version must have matching integrity.
+Rerun the same workflow run after a partial publication failure, preserving its commit.
+Never move a released tag or reuse a version with changed content; bump the version instead.
+Publication is explicit, with no push-triggered release.
