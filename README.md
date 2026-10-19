@@ -143,6 +143,12 @@ Call `exportOne` from a bounded application worker budget, not an unbounded drai
 Run `pnpm install --frozen-lockfile`, `pnpm test` and `pnpm check:package`.
 The `test` CI job runs the real Miniflare transaction tests and imports the packed artifact from an isolated consumer directory.
 
+The local recovery test serializes domain, event and delivery rows to a file, closes the source runtime, and restores them into a separate Miniflare D1 database.
+It verifies retained replay fingerprints across key rotation, original leap-day expiry, stale-lease recovery and duplicate delivery through the shared HTTP sender against a persistent collector fixture.
+Conflicting collector history stays queued; expired rows never reach the sender and are removed with an atomic cleanup summary.
+This qualifies logical row restoration and library behavior, not Cloudflare Time Travel, a production backup format, recovery-point completeness or the actual central collector deployment.
+A production restore must fence writers, preserve original timestamps and replay-key generations, apply expiry before query/export, and qualify its own backup/recovery path before enabling traffic.
+
 ## Release
 
 Configure the npm Trusted Publisher for organization `etamong-playground`, repository `audit-ts`, workflow `publish.yml`, with direct publishing enabled before the first release.
