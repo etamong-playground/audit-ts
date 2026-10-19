@@ -93,7 +93,8 @@ A sender that ignores cancellation can still have a late external effect, but ca
 The collector must deduplicate stable event IDs and reject changed-content replay; delivery is at least once, never an exactly-once network claim.
 Lost acknowledgements retry the unchanged retained payload after restart, with persisted exponential backoff from one second to five minutes.
 Validation failures also back off, allowing other due events to advance; callers must surface `retry` errors and `lease-lost` outcomes in monitoring.
-Database failures reject the call, and an uncertain local acknowledgement remains safe to retry against the idempotent collector.
+Database failures before claiming or while persisting retry state reject the call; other post-claim failures return `retry` or `lease-lost` according to lease ownership.
+An uncertain local acknowledgement remains safe to retry against the idempotent collector.
 An `accepted` result removes only delivery bookkeeping, preserving event history and replay fingerprints until retention cleanup.
 Expired events are not dispatched; cleanup remains a separately audited integration.
 Call `exportOne` from a bounded application worker budget, not an unbounded drain loop.
