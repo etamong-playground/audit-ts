@@ -75,11 +75,11 @@ Outbox scheduling, expiry cleanup and recovery replay are separate required inte
 
 ```ts
 import { RelationalAuditExporter } from '@etamong-playground/audit-ts/delivery';
+import { collectorSender } from '@etamong-playground/audit-ts/collector';
 
 const exporter = new RelationalAuditExporter(env.DB);
-const result = await exporter.exportOne(async (event, signal) => {
-  return collector.send(event, signal);
-});
+const send = collectorSender(env.AUDIT_COLLECTOR_URL, env.AUDIT_PRODUCER_TOKEN);
+const result = await exporter.exportOne(send);
 if (result.status === 'retry') reportDeliveryFailure(result.eventID, result.error);
 ```
 
@@ -87,7 +87,13 @@ if (result.status === 'retry') reportDeliveryFailure(result.eventID, result.erro
 The sender must propagate the abort signal to its network operation and return only a durable collector acknowledgement with the matching `event_id` and `accepted` or `expired` disposition.
 The exporter rejects an `expired` acknowledgement before the original calendar deadline.
 An event may expire while a request is in flight; the collector applies original expiry at ingestion, so an acknowledgement does not extend retention.
-Use authenticated HTTPS without redirects and bound response bytes in the application transport; this module makes no HTTP requests itself.
+`collectorSender` supplies the shared HTTP transport; custom senders must enforce the same boundary.
+Configure a trusted HTTPS ingestion URL without userinfo, query or fragment, and a dedicated bearer token of 32–4096 characters.
+The transport sends one event using the collector's `{ events: [...] }` envelope, refuses redirects and returns only one matching `accepted` or `expired` acknowledgement.
+It limits response bodies to 64 KiB, counting streamed bytes even without a trustworthy Content-Length; malformed JSON, invalid acknowledgements and HTTP failures never acknowledge delivery.
+Collector response bodies and bearer values are excluded from transport-generated error messages.
+Cancellation is passed to fetch and body reads; use the exporter or another bounded caller to supply a deadline.
+The optional `fetch` and `now` dependencies support isolated tests; production uses the runtime fetch and wall clock.
 
 A sender that ignores cancellation can still have a late external effect, but cannot acknowledge or release a replacement worker's lease.
 The collector must deduplicate stable event IDs and reject changed-content replay; delivery is at least once, never an exactly-once network claim.
