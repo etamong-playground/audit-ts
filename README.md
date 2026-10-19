@@ -59,7 +59,8 @@ Each domain statement is immediately followed by an affected-row assertion insid
 The event insert enqueues delivery through a database trigger; any guard, event or outbox failure rolls back the batch.
 The adapter accepts at most 20 mutation statements and a 1 MiB serialized request, including the event and mutation parameters.
 The caller owns semantic field allowlists and complete, bounded target attribution for bulk writes.
-The schema prevents event UPDATE; the trusted D1 binding owner still controls database permissions, retention deletes and schema maintenance.
+The schema prevents event UPDATE; the trusted D1 binding owner still controls database permissions and schema maintenance.
+Use `purgeExpired` for audited retention deletes instead of passing audit-table mutations to `commit`.
 
 Exact retained replay compares a domain-separated HMAC fingerprint, including SQL, parameters and expected row counts.
 Supply a dedicated replay key of at least 32 bytes and its version; retain prior key versions for the full event retention window so retries survive rotation.
@@ -70,6 +71,38 @@ The adapter preserves the underlying error as the cause and does not infer a ret
 Keep the original event and mutation request when investigating or retrying an unknown outcome.
 Expired or more-than-five-minute future events are rejected before dispatch, and retries preserve the original occurrence and expiry.
 Outbox scheduling, expiry cleanup and recovery replay are separate required integrations before production adoption.
+
+## Audited retention cleanup
+
+```ts
+const cleanupID = eventID();
+const outcome = await store.purgeExpired({
+  schema_version: 1,
+  event_id: cleanupID,
+  operation_id: cleanupID,
+  service: 'example',
+  environment: 'development',
+  occurred_at: new Date().toISOString(),
+  actor: { id: 'audit-retention', type: 'job' },
+  action: 'audit.cleanup',
+  target_type: 'audit_history',
+  target_id: 'example',
+  result: 'ok',
+}, 1000);
+```
+
+Run cleanup on a bounded daily schedule, using a fresh event identity per invocation and an empty `changes` list.
+It removes at most 1–1000 expired events in the cleanup event's service/environment, including expired undelivered records, and cascades their delivery bookkeeping.
+The returned event contains only the removed count and inclusive occurrence/expiry ranges in UTC milliseconds; it never copies expired payloads or individual event IDs into the summary.
+Deletion, exact affected-row verification, cleanup event and its delivery enqueue share one D1 transaction.
+A concurrent cleaner changing the selected rows causes a rollback rather than an inaccurate summary; acknowledgement changes alone do not invalidate the immutable event snapshot.
+Empty runs return `null` without creating an event; this is a snapshot result, not proof that the expiry backlog will remain empty.
+
+A failed batch acknowledgement is confirmed using the existing primary-session fingerprint path; otherwise `AuditOutcomeUnknown.eventID` identifies the cleanup evidence to inspect.
+Do not infer rollback from a thrown error or reuse a cleanup identity for a different run.
+A reused retained identity is rejected with `AuditConflict`; this method does not replay an earlier cleanup result.
+Unexpired records are never deleted, and replay or restore must preserve their original occurrence and expiry.
+Producer query surfaces must hide expired records immediately even before physical cleanup; backup recovery and scheduling remain consumer responsibilities.
 
 ## Relational outbox delivery
 

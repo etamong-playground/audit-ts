@@ -46,6 +46,45 @@ export class RelationalAuditStore {
     return Array.from(new Uint8Array(hash), (byte) => byte.toString(16).padStart(2, '0')).join('');
   }
 
+  async purgeExpired(event: DurableEvent, limit = 1000): Promise<DurableEvent | null> {
+    const base: DurableEvent = JSON.parse(eventJSON(event));
+    if (base.action !== 'audit.cleanup' || base.actor.type !== 'job' || base.result !== 'ok' ||
+      (base.changes?.length ?? 0) !== 0 || !Number.isSafeInteger(limit) || limit < 1 || limit > 1000) {
+      throw new Error('Invalid audit cleanup');
+    }
+    const cutoff = this.now();
+    if (Date.parse(base.occurred_at) > cutoff + 300000 || expiryMilliseconds(base.occurred_at) <= cutoff) {
+      throw new Error('Audit occurrence is outside retention');
+    }
+    const session = this.database.withSession('first-primary');
+    const prior = await session.prepare('SELECT event_id FROM audit_events WHERE event_id=?')
+      .bind(base.event_id).first<{ event_id: string }>();
+    if (prior) throw new AuditConflict();
+    const snapshot = await session.prepare(`SELECT json_group_array(event_id) AS ids,count(*) AS removed,
+      min(occurred_at) AS occurred_from,max(occurred_at) AS occurred_to,
+      min(expires_at) AS expired_from,max(expires_at) AS expired_to FROM (
+        SELECT event_id,occurred_at,expires_at FROM audit_events
+        WHERE expires_at<=? AND json_extract(payload,'$.service')=? AND json_extract(payload,'$.environment')=?
+        ORDER BY expires_at,event_id LIMIT ?)`)
+      .bind(cutoff, base.service, base.environment, limit).first<{
+        ids: string; removed: number; occurred_from: number; occurred_to: number; expired_from: number; expired_to: number;
+      }>();
+    if (!snapshot) throw new Error('Audit retention snapshot is unavailable');
+    if (snapshot.removed === 0) return null;
+    const summary: DurableEvent = { ...base, changes: [
+      { field: 'removed_count', after: String(snapshot.removed) },
+      { field: 'occurred_from', after: new Date(snapshot.occurred_from).toISOString() },
+      { field: 'occurred_to', after: new Date(snapshot.occurred_to).toISOString() },
+      { field: 'expired_from', after: new Date(snapshot.expired_from).toISOString() },
+      { field: 'expired_to', after: new Date(snapshot.expired_to).toISOString() },
+    ] };
+    await this.commit([{
+      sql: `DELETE FROM audit_events WHERE event_id IN (SELECT value FROM json_each(?)) AND expires_at<=?`,
+      params: [snapshot.ids, cutoff], expectedChanges: snapshot.removed,
+    }], summary);
+    return summary;
+  }
+
   async commit(input: Mutation[], event: DurableEvent): Promise<void> {
     const payload = eventJSON(event);
     const retained: DurableEvent = JSON.parse(payload);
