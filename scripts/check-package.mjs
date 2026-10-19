@@ -23,6 +23,7 @@ import { RelationalAuditStore, AuditConflict, AuditOutcomeUnknown } from '@etamo
 assert.equal(expiresAt('2024-02-29T12:30:00Z'), '2026-02-28T12:30:00Z');
 assert.ok(eventID().length > 0);
 assert.equal(typeof RelationalAuditStore, 'function');
+assert.equal(typeof RelationalAuditStore.prototype.purgeExpired, 'function');
 assert.ok(new AuditConflict() instanceof Error);
 assert.ok(new AuditOutcomeUnknown('test', new Error('lost')) instanceof Error);
 const schema = await readFile(new URL(import.meta.resolve('@etamong-playground/audit-ts/relational-schema.sql')), 'utf8');
