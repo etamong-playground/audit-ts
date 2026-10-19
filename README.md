@@ -69,7 +69,34 @@ After a failed batch acknowledgement, a new primary session confirms the same fi
 The adapter preserves the underlying error as the cause and does not infer a retry disposition from SQLite error-message text.
 Keep the original event and mutation request when investigating or retrying an unknown outcome.
 Expired or more-than-five-minute future events are rejected before dispatch, and retries preserve the original occurrence and expiry.
-Outbox export, expiry cleanup and recovery replay are separate required integrations before production adoption.
+Outbox scheduling, expiry cleanup and recovery replay are separate required integrations before production adoption.
+
+## Relational outbox delivery
+
+```ts
+import { RelationalAuditExporter } from '@etamong-playground/audit-ts/delivery';
+
+const exporter = new RelationalAuditExporter(env.DB);
+const result = await exporter.exportOne(async (event, signal) => {
+  return collector.send(event, signal);
+});
+if (result.status === 'retry') reportDeliveryFailure(result.eventID, result.error);
+```
+
+`exportOne` atomically leases at most one due, unexpired event for 30 seconds and gives the sender at most 10 seconds within the remaining lease.
+The sender must propagate the abort signal to its network operation and return only a durable collector acknowledgement with the matching `event_id` and `accepted` or `expired` disposition.
+The exporter rejects an `expired` acknowledgement before the original calendar deadline.
+An event may expire while a request is in flight; the collector applies original expiry at ingestion, so an acknowledgement does not extend retention.
+Use authenticated HTTPS without redirects and bound response bytes in the application transport; this module makes no HTTP requests itself.
+
+A sender that ignores cancellation can still have a late external effect, but cannot acknowledge or release a replacement worker's lease.
+The collector must deduplicate stable event IDs and reject changed-content replay; delivery is at least once, never an exactly-once network claim.
+Lost acknowledgements retry the unchanged retained payload after restart, with persisted exponential backoff from one second to five minutes.
+Validation failures also back off, allowing other due events to advance; callers must surface `retry` errors and `lease-lost` outcomes in monitoring.
+Database failures reject the call, and an uncertain local acknowledgement remains safe to retry against the idempotent collector.
+An `accepted` result removes only delivery bookkeeping, preserving event history and replay fingerprints until retention cleanup.
+Expired events are not dispatched; cleanup remains a separately audited integration.
+Call `exportOne` from a bounded application worker budget, not an unbounded drain loop.
 
 ## Validation
 

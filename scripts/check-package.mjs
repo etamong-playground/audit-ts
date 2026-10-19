@@ -14,6 +14,8 @@ try {
   await writeFile(resolve(directory, 'consumer.mjs'), `
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { RelationalAuditExporter } from '@etamong-playground/audit-ts/delivery';
+assert.equal(typeof RelationalAuditExporter, 'function');
 import { expiresAt, eventID } from '@etamong-playground/audit-ts';
 import { RelationalAuditStore, AuditConflict, AuditOutcomeUnknown } from '@etamong-playground/audit-ts/relational';
 assert.equal(expiresAt('2024-02-29T12:30:00Z'), '2026-02-28T12:30:00Z');

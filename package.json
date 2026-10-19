@@ -12,7 +12,11 @@
       "types": "./dist/relational.d.ts",
       "import": "./dist/relational.js"
     },
-    "./relational-schema.sql": "./relational-schema.sql"
+    "./relational-schema.sql": "./relational-schema.sql",
+    "./delivery": {
+      "types": "./dist/delivery.d.ts",
+      "import": "./dist/delivery.js"
+    }
   },
   "files": [
     "dist",
